@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Junior Rescue - Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+</head>
+<body style="display: block; background: #f8fafc;">
+
+<nav>
+    <div class="brand">Junior Rescue Learning</div>
+    <div id="nav-links">
+        <a href="dashboard.html">🏠 Home</a>
+        <a href="#" id="admin-link" class="hidden">⚙️ Verwaltung</a>
+        <a href="#" onclick="logout()">🚪 Abmelden</a>
+    </div>
+</nav>
+
+<div style="max-width: 1000px; margin: 40px auto; padding: 0 20px;">
+    <div class="card" style="margin-bottom: 30px; display: flex; align-items: center; gap: 20px;">
+        <div style="background: #eff6ff; padding: 20px; border-radius: 50%; font-size: 2rem;">🛡️</div>
+        <div style="flex-grow: 1;">
+            <h2 style="margin: 0; text-align: left;" id="user-greeting">Hallo!</h2>
+            <div class="xp-text">Level <span id="lvl">1</span> • <span id="xp">0</span> XP</div>
+            <div class="progress-container">
+                <div id="xp-bar" class="progress-bar"></div>
+            </div>
+        </div>
+    </div>
+
+    <h3>Deine Hausaufgaben</h3>
+    <div id="hw-area" class="grid">
+        <p style="color: #94a3b8;">Keine offenen Aufgaben.</p>
+    </div>
+
+    <h3>Lern-Themen</h3>
+    <div id="topics-area" class="grid">
+        </div>
+</div>
+
+<script src="app.js"></script>
+<script>
+    auth.onAuthStateChanged(async (user) => {
+        if (!user) return;
+        const snap = await db.collection("Users").doc(user.uid).get();
+        const u = snap.data();
+
+        // UI füllen
+        document.getElementById('user-greeting').innerText = `Hallo, ${u.vorname}!`;
+        document.getElementById('lvl').innerText = u.level || 1;
+        document.getElementById('xp').innerText = u.xp || 0;
+        
+        // XP Bar berechnen (Beispiel: 500 XP pro Level)
+        const progress = ((u.xp % 500) / 500) * 100;
+        document.getElementById('xp-bar').style.width = progress + "%";
+
+        // Admin Link anzeigen
+        if(u.role !== "Jugendlicher") {
+            const al = document.getElementById('admin-link');
+            al.classList.remove('hidden');
+            al.href = "verwaltung.html";
+        }
+        
+        loadDashboardData(u.orgID, user.uid);
+    });
+
+    async function loadDashboardData(orgID, uid) {
+        // Hausaufgaben
+        const hwSnap = await db.collection("Homework").where("userID", "==", uid).where("status", "==", "offen").get();
+        const hwArea = document.getElementById('hw-area');
+        if(!hwSnap.empty) hwArea.innerHTML = "";
+        hwSnap.forEach(doc => {
+            const h = doc.data();
+            hwArea.innerHTML += `
+                <div class="card" style="border-top: 4px solid #f59e0b;">
+                    <div class="badge" style="background: #fef3c7; color: #92400e;">Hausaufgabe</div>
+                    <h4 style="margin: 10px 0;">${h.topicTitle}</h4>
+                    <button class="btn-dark" onclick="location.href='lernen.html?id=${h.topicID}'">Jetzt bearbeiten</button>
+                </div>`;
+        });
+
+        // Themen (Global + Eigene Orga)
+        const tSnap = await db.collection("Topics").where("orgID", "in", ["global", orgID]).get();
+        const tArea = document.getElementById('topics-area');
+        tArea.innerHTML = "";
+        tSnap.forEach(doc => {
+            const t = doc.data();
+            tArea.innerHTML += `
+                <div class="card">
+                    <h4 style="margin-bottom: 5px;">${t.title}</h4>
+                    <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 20px;">${t.content.substring(0, 60)}...</p>
+                    <button class="btn-outline" onclick="location.href='lernen.html?id=${doc.id}'">Öffnen</button>
+                </div>`;
+        });
+    }
+</script>
+</body>
+</html>

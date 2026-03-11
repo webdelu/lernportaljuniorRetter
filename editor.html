@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thema erstellen - Junior Rescue</title>
+    <style>
+        :root {
+            --bg: #f0f4f8;
+            --card-bg: #ffffff;
+            --input-bg: #f1f5f9;
+            --primary-dark: #1e293b;
+            --accent-blue: #3b82f6;
+            --border: #e2e8f0;
+        }
+
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 20px; color: var(--primary-dark); }
+        
+        .editor-box { 
+            background: var(--card-bg); 
+            padding: 30px; 
+            border-radius: 25px; 
+            max-width: 800px; 
+            margin: auto; 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+        }
+
+        h2 { margin-top: 0; font-weight: bold; }
+        label { display: block; margin-bottom: 5px; font-weight: 600; color: #64748b; }
+
+        input, textarea { 
+            width: 100%; padding: 12px; margin-bottom: 20px; 
+            border: 1px solid var(--border); border-radius: 12px; 
+            background: var(--input-bg); font-size: 1rem; box-sizing: border-box;
+        }
+
+        /* Quiz-Fragen Bereich */
+        .q-block { 
+            background: #f8fafc; 
+            padding: 20px; 
+            border-radius: 15px; 
+            margin-bottom: 15px; 
+            border: 1px solid var(--border);
+            border-left: 5px solid var(--accent-blue);
+        }
+
+        .btn-add {
+            background: white; border: 2px dashed var(--accent-blue); color: var(--accent-blue);
+            padding: 15px; width: 100%; border-radius: 12px; cursor: pointer; 
+            font-weight: bold; margin-bottom: 20px; transition: 0.2s;
+        }
+        .btn-add:hover { background: #eff6ff; }
+
+        .btn-save { 
+            background: var(--primary-dark); 
+            color: white; border: none; padding: 18px; width: 100%; 
+            border-radius: 12px; cursor: pointer; font-weight: bold; font-size: 1.1rem;
+        }
+
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+    </style>
+</head>
+<body>
+
+<div class="editor-box">
+    <h2>Neues Thema erstellen</h2>
+    
+    <label>Titel des Moduls</label>
+    <input type="text" id="title" placeholder="z.B. Knotenkunde oder Erste Hilfe">
+
+    <label>Lerninhalt (Text)</label>
+    <textarea id="content" rows="6" placeholder="Beschreibe hier das Thema für die Jugendlichen..."></textarea>
+
+    <label>Quiz-Fragen</label>
+    <div id="q-area">
+        </div>
+
+    <button class="btn-add" onclick="addQ()">+ Frage hinzufügen</button>
+    
+    <button class="btn-save" id="save-btn" onclick="saveTopic()">Thema jetzt veröffentlichen</button>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+<script src="app.js"></script>
+
+<script>
+    let qCount = 0;
+
+    // Funktion um ein neues Frage-Feld zu erzeugen
+    function addQ() {
+        qCount++;
+        const qArea = document.getElementById('q-area');
+        const div = document.createElement('div');
+        div.className = "q-block";
+        div.innerHTML = `
+            <label>Frage ${qCount}</label>
+            <input type="text" class="q-txt" placeholder="Deine Frage...">
+            <div class="grid-2">
+                <div>
+                    <label style="color: #22c55e;">Richtige Antwort</label>
+                    <input type="text" class="q-cor" placeholder="Lösung A">
+                </div>
+                <div>
+                    <label style="color: #ef4444;">Falsche Antwort</label>
+                    <input type="text" class="q-wro" placeholder="Lösung B">
+                </div>
+            </div>
+        `;
+        qArea.appendChild(div);
+    }
+
+    // Speichern Logik
+    async function saveTopic() {
+        const title = document.getElementById('title').value;
+        const content = document.getElementById('content').value;
+        const btn = document.getElementById('save-btn');
+
+        if(!title || !content) return alert("Bitte Titel und Inhalt ausfüllen!");
+
+        const questions = [];
+        const blocks = document.querySelectorAll('.q-block');
+        
+        if(blocks.length === 0) return alert("Bitte füge mindestens eine Frage hinzu!");
+
+        blocks.forEach(block => {
+            questions.push({
+                question: block.querySelector('.q-txt').value,
+                correct: block.querySelector('.q-cor').value,
+                wrong: block.querySelector('.q-wro').value
+            });
+        });
+
+        btn.disabled = true;
+        btn.innerText = "Wird veröffentlicht...";
+
+        try {
+            // User Daten holen für die orgID
+            const user = auth.currentUser;
+            if(!user) throw new Error("Nicht angemeldet!");
+
+            const uDoc = await db.collection("Users").doc(user.uid).get();
+            const userData = uDoc.data();
+
+            await db.collection("Topics").add({
+                title: title,
+                content: content,
+                questions: questions,
+                orgID: userData.orgID,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+
+            alert("Thema erfolgreich erstellt!");
+            window.location.href = "dashboard.html";
+
+        } catch(e) {
+            alert("Fehler beim Speichern: " + e.message);
+            btn.disabled = false;
+            btn.innerText = "Thema jetzt veröffentlichen";
+        }
+    }
+
+    // Direkt eine erste Frage anzeigen beim Laden
+    addQ();
+</script>
+</body>
+</html>

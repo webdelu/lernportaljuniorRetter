@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8"><title>Junior Rescue - Verwaltung</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+</head>
+<body>
+<nav>
+    <div style="font-weight:bold">Admin-Bereich</div>
+    <div id="nav-links"><a href="dashboard.html">Home</a></div>
+</nav>
+
+<div class="container">
+    <div id="superadmin-tools" class="hidden card" style="border: 2px solid #3b82f6;">
+        <h2 style="color:#3b82f6;">SuperAdmin Zentrale</h2>
+        <p>Du kannst hier Themen für alle Feuerwehren gleichzeitig erstellen.</p>
+        <button class="btn-dark" onclick="location.href='editor.html?type=global'">Globales Thema erstellen</button>
+    </div>
+
+    <div id="admin-tools" class="card">
+        <h2>Deine Feuerwehr</h2>
+        <p id="org-info">Lade Orga-Daten...</p>
+        <button class="btn-dark" onclick="location.href='editor.html?type=local'">Lokales Thema erstellen</button>
+    </div>
+
+    <h3>Mitgliederliste</h3>
+    <div id="user-list"></div>
+</div>
+
+<script src="app.js"></script>
+<script>
+    auth.onAuthStateChanged(async user => {
+        if(!user) return;
+        const uDoc = await db.collection("Users").doc(user.uid).get();
+        const userData = uDoc.data();
+
+        if(userData.role === "SuperAdmin") {
+            document.getElementById('superadmin-tools').classList.remove('hidden');
+        }
+
+        const orgDoc = await db.collection("Organisations").doc(userData.orgID).get();
+        document.getElementById('org-info').innerText = "Organisation: " + orgDoc.data().orgName + " | Code: " + orgDoc.data().inviteCode;
+
+        // Mitglieder laden
+        const users = await db.collection("Users").where("orgID", "==", userData.orgID).get();
+        const list = document.getElementById('user-list');
+        users.forEach(doc => {
+            const u = doc.data();
+            list.innerHTML += `<div class="card"><b>${u.vorname}</b> (${u.role}) - Level ${calculateLevel(u.xp)}</div>`;
+        });
+    });
+</script>
+</body>
+</html>

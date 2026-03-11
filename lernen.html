@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8"><title>Lernen - Junior Rescue</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+</head>
+<body style="display:block">
+<div class="container" id="l-sec" style="max-width:700px; text-align:left">
+    <h2 id="ltitle" style="text-align:center">Lade Thema...</h2>
+    <img id="l-img" style="width:100%; border-radius:15px; margin-bottom:20px; display:none; object-fit: cover; max-height: 300px;">
+    <p id="ltext" style="line-height:1.6; white-space: pre-wrap; color: #334155;"></p>
+    <button class="btn-dark" style="margin-top:20px" onclick="startQuiz()">Verstanden - Zum Quiz!</button>
+</div>
+
+<div class="container hidden" id="q-sec" style="max-width:600px">
+    <h2>Wissenstest</h2>
+    <div id="q-container"></div>
+    <button class="btn-dark hidden" id="finish-btn" onclick="completeTopic()">Quiz abschließen</button>
+</div>
+
+<script src="app.js"></script>
+<script>
+    const topicId = new URLSearchParams(window.location.search).get('id');
+    let topicData;
+    let score = 0;
+    let answered = 0;
+
+    async function loadContent() {
+        const doc = await db.collection("Topics").doc(topicId).get();
+        if(!doc.exists) { alert("Thema nicht gefunden!"); return; }
+        topicData = doc.data();
+        
+        document.getElementById('ltitle').innerText = topicData.title;
+        document.getElementById('ltext').innerText = topicData.content;
+        if(topicData.image) {
+            const img = document.getElementById('l-img');
+            img.src = topicData.image;
+            img.style.display = "block";
+        }
+    }
+
+    function startQuiz() {
+        if(!topicData.questions || topicData.questions.length === 0) {
+            completeTopic(); 
+            return;
+        }
+        document.getElementById('l-sec').classList.add('hidden');
+        document.getElementById('q-sec').classList.remove('hidden');
+        
+        const container = document.getElementById('q-container');
+        topicData.questions.forEach((q, i) => {
+            const isCorrectFirst = Math.random() > 0.5;
+            container.innerHTML += `
+                <div class="card" style="margin-bottom: 15px;">
+                    <p><b>${q.question}</b></p>
+                    <button class="btn-outline" onclick="checkAnswer(this, ${isCorrectFirst})">${isCorrectFirst ? q.correct : q.wrong}</button>
+                    <button class="btn-outline" onclick="checkAnswer(this, ${!isCorrectFirst})">${!isCorrectFirst ? q.correct : q.wrong}</button>
+                </div>`;
+        });
+    }
+
+    function checkAnswer(btn, isCorrect) {
+        const parent = btn.parentElement;
+        if(isCorrect) {
+            btn.style.background = "#dcfce7";
+            btn.style.borderColor = "#22c55e";
+            score++;
+        } else {
+            btn.style.background = "#fee2e2";
+            btn.style.borderColor = "#ef4444";
+        }
+        parent.querySelectorAll('button').forEach(b => b.disabled = true);
+        answered++;
+        if(answered === topicData.questions.length) document.getElementById('finish-btn').classList.remove('hidden');
+    }
+
+    async function completeTopic() {
+        const xpGain = (score * 50) + 50; 
+        const userRef = db.collection("Users").doc(auth.currentUser.uid);
+        
+        await userRef.update({
+            xp: firebase.firestore.FieldValue.increment(xpGain)
+        });
+
+        const hws = await db.collection("Homework")
+            .where("userID","==",auth.currentUser.uid)
+            .where("topicID","==",topicId).get();
+        hws.forEach(d => d.ref.update({status:"erledigt"}));
+
+        alert(`Super! Du hast ${xpGain} XP gesammelt.`);
+        location.href = "dashboard.html";
+    }
+    loadContent();
+</script>
+</body>
+</html>

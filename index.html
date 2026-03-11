@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Junior Rescue - Login & Registrierung</title>
+    
+    <style>
+        :root {
+            --bg: #f0f4f8;
+            --card-bg: #ffffff;
+            --input-bg: #f1f5f9;
+            --primary-dark: #1e293b;
+            --accent-blue: #3b82f6;
+            --border: #e2e8f0;
+            --text-gray: #64748b;
+        }
+
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background: var(--bg); 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            min-height: 100vh; 
+            margin: 0; 
+            color: var(--primary-dark);
+        }
+
+        .container { 
+            background: var(--card-bg); 
+            padding: 40px; 
+            border-radius: 30px; 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05); 
+            width: 100%; 
+            max-width: 400px; 
+            text-align: center;
+        }
+
+        img.logo { max-width: 130px; margin-bottom: 20px; }
+
+        h2 { color: #000; margin-bottom: 25px; font-weight: bold; font-size: 1.6rem; }
+
+        input { 
+            width: 100%; 
+            padding: 15px; 
+            margin-bottom: 12px; 
+            background: var(--input-bg); 
+            border: 1px solid var(--border); 
+            border-radius: 15px; 
+            box-sizing: border-box;
+            font-size: 1rem;
+            transition: border 0.2s;
+        }
+
+        input:focus { border-color: var(--accent-blue); outline: none; }
+
+        .btn-main { 
+            width: 100%; 
+            padding: 15px; 
+            background: var(--primary-dark); 
+            color: white; 
+            border: none; 
+            border-radius: 15px; 
+            cursor: pointer; 
+            font-weight: bold;
+            font-size: 1rem;
+            margin-top: 10px;
+        }
+
+        .btn-main:disabled { background: var(--text-gray); cursor: not-allowed; }
+
+        .btn-outline { 
+            width: 100%; 
+            padding: 12px; 
+            background: white; 
+            color: var(--text-gray); 
+            border: 1px solid var(--border); 
+            border-radius: 15px; 
+            cursor: pointer; 
+            margin-top: 10px;
+            font-weight: 500;
+        }
+
+        .hidden { display: none; }
+
+        .link-text { 
+            color: var(--accent-blue); 
+            cursor: pointer; 
+            display: block; 
+            margin-top: 20px; 
+            font-size: 0.9rem; 
+            font-weight: 600;
+        }
+    </style>
+
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+</head>
+<body>
+
+<div class="container">
+    <img src="logo.png" alt="Logo" class="logo">
+
+    <div id="login-sec">
+        <h2>Anmeldung</h2>
+        <input type="email" id="l-email" placeholder="E-Mail">
+        <input type="password" id="l-pw" placeholder="Passwort">
+        <button onclick="doLogin()" class="btn-main">Anmelden</button>
+        <button onclick="toggle('reg-user-sec')" class="btn-outline">Neu registrieren</button>
+        <span class="link-text" onclick="toggle('reg-org-sec')">Organisation neu anmelden</span>
+    </div>
+
+    <div id="reg-user-sec" class="hidden">
+        <h2>Registrierung</h2>
+        <input type="text" id="u-name" placeholder="Vorname">
+        <input type="email" id="u-email" placeholder="E-Mail">
+        <input type="password" id="u-pw" placeholder="Passwort">
+        <input type="text" id="u-code" placeholder="Teilnehmer-Code">
+        <button id="reg-btn" onclick="regUser()" class="btn-main">Account erstellen</button>
+        <button onclick="toggle('login-sec')" class="btn-outline">Zurück</button>
+    </div>
+
+    <div id="reg-org-sec" class="hidden">
+        <h2>Organisation</h2>
+        <input type="text" id="o-admin" placeholder="Dein Name">
+        <input type="email" id="o-email" placeholder="E-Mail">
+        <input type="text" id="o-name" placeholder="Name der Feuerwehr">
+        <input type="password" id="o-pw" placeholder="Passwort">
+        <button id="org-btn" onclick="regOrg()" class="btn-main">Jetzt starten</button>
+        <button onclick="toggle('login-sec')" class="btn-outline">Zurück</button>
+    </div>
+</div>
+
+<script src="app.js"></script>
+<script>
+    // Ansichten umschalten
+    function toggle(id) {
+        document.getElementById('login-sec').classList.add('hidden');
+        document.getElementById('reg-user-sec').classList.add('hidden');
+        document.getElementById('reg-org-sec').classList.add('hidden');
+        document.getElementById(id).classList.remove('hidden');
+    }
+
+    // Login Logik
+    async function doLogin() {
+        const email = document.getElementById('l-email').value;
+        const pw = document.getElementById('l-pw').value;
+        if(!email || !pw) return alert("E-Mail & Passwort!");
+        try {
+            await auth.signInWithEmailAndPassword(email, pw);
+            window.location.href = "dashboard.html";
+        } catch(e) { alert("Login Fehler: " + e.message); }
+    }
+
+    // Teilnehmer Registrierung
+    async function regUser() {
+        const name = document.getElementById('u-name').value;
+        const email = document.getElementById('u-email').value;
+        const pw = document.getElementById('u-pw').value;
+        const code = document.getElementById('u-code').value.trim();
+        const btn = document.getElementById('reg-btn');
+
+        if(!name || !email || !pw || !code) return alert("Alle Felder ausfüllen!");
+
+        btn.disabled = true;
+        btn.innerText = "Wird erstellt...";
+
+        try {
+            const orgSnap = await db.collection("Organisations").where("inviteCode", "==", code).get();
+            if(orgSnap.empty) {
+                btn.disabled = false;
+                btn.innerText = "Account erstellen";
+                return alert("Der Teilnehmer-Code ist ungültig!");
+            }
+            
+            const orgId = orgSnap.docs[0].id;
+            const res = await auth.createUserWithEmailAndPassword(email, pw);
+            
+            await db.collection("Users").doc(res.user.uid).set({
+                vorname: name,
+                role: "Jugendlicher",
+                orgID: orgId,
+                xp: 0,
+                level: 1,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+
+            window.location.href = "dashboard.html";
+        } catch(e) {
+            alert("Fehler: " + e.message);
+            btn.disabled = false;
+            btn.innerText = "Account erstellen";
+        }
+    }
+
+    // Organisations Registrierung
+    async function regOrg() {
+        const admin = document.getElementById('o-admin').value;
+        const email = document.getElementById('o-email').value;
+        const org = document.getElementById('o-name').value;
+        const pw = document.getElementById('o-pw').value;
+        const btn = document.getElementById('org-btn');
+
+        if(!admin || !email || !org || !pw) return alert("Alle Felder ausfüllen!");
+
+        btn.disabled = true;
+
+        try {
+            const code = Math.random().toString(36).substring(2,8).toUpperCase();
+            const res = await auth.createUserWithEmailAndPassword(email, pw);
+            const orgRef = await db.collection("Organisations").add({ 
+                orgName: org, 
+                inviteCode: code 
+            });
+
+            await db.collection("Users").doc(res.user.uid).set({
+                vorname: admin,
+                role: "Admin",
+                orgID: orgRef.id,
+                xp: 0,
+                level: 1
+            });
+
+            alert("Code für deine Mitglieder: " + code);
+            window.location.href = "dashboard.html";
+        } catch(e) {
+            alert("Fehler: " + e.message);
+            btn.disabled = false;
+        }
+    }
+</script>
+</body>
+</html>
