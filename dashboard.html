@@ -2,100 +2,104 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>Junior Rescue - Dashboard</title>
-    <link rel="stylesheet" href="style.css">
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wartungsarbeiten - Junior Rescue</title>
+    <style>
+        :root {
+            --bg: #f0f4f8;
+            --card-bg: #ffffff;
+            --primary-dark: #1e293b;
+            --accent-blue: #3b82f6;
+            --text-gray: #64748b;
+        }
+
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background: var(--bg); 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            min-height: 100vh; 
+            margin: 0; 
+            color: var(--primary-dark);
+        }
+
+        .container { 
+            background: var(--card-bg); 
+            padding: 50px 40px; 
+            border-radius: 30px; 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05); 
+            width: 100%; 
+            max-width: 450px; 
+            /* Flexbox sorgt dafür, dass alle Elemente im Container mittig ausgerichtet sind */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+
+        .logo { 
+            max-width: 150px; 
+            margin-bottom: 25px;
+            display: block;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 8px 20px;
+            background: #eff6ff;
+            color: var(--accent-blue);
+            border-radius: 50px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            margin-bottom: 25px;
+            border: 1px solid #dbeafe;
+        }
+
+        h1 { 
+            color: #000; 
+            margin-bottom: 15px; 
+            font-weight: bold; 
+            font-size: 1.8rem; 
+        }
+
+        p { 
+            color: var(--text-gray); 
+            line-height: 1.6; 
+            margin-bottom: 30px;
+            font-size: 1.05rem;
+        }
+
+        .footer-note {
+            width: 100%;
+            font-size: 0.85rem;
+            color: #94a3b8;
+            border-top: 1px solid #e2e8f0;
+            padding-top: 20px;
+        }
+    </style>
 </head>
-<body style="display: block; background: #f8fafc;">
+<body>
 
-<nav>
-    <div class="brand">Junior Rescue Learning</div>
-    <div id="nav-links">
-        <a href="dashboard.html">🏠 Home</a>
-        <a href="#" id="admin-link" class="hidden">⚙️ Verwaltung</a>
-        <a href="#" onclick="logout()">🚪 Abmelden</a>
-    </div>
-</nav>
+<div class="container">
+    <img src="logo.png" alt="Junior Rescue Logo" class="logo">
 
-<div style="max-width: 1000px; margin: 40px auto; padding: 0 20px;">
-    <div class="card" style="margin-bottom: 30px; display: flex; align-items: center; gap: 20px;">
-        <div style="background: #eff6ff; padding: 20px; border-radius: 50%; font-size: 2rem;">🛡️</div>
-        <div style="flex-grow: 1;">
-            <h2 style="margin: 0; text-align: left;" id="user-greeting">Hallo!</h2>
-            <div class="xp-text">Level <span id="lvl">1</span> • <span id="xp">0</span> XP</div>
-            <div class="progress-container">
-                <div id="xp-bar" class="progress-bar"></div>
-            </div>
-        </div>
+    <div class="status-badge">
+        System-Update läuft
     </div>
 
-    <h3>Deine Hausaufgaben</h3>
-    <div id="hw-area" class="grid">
-        <p style="color: #94a3b8;">Keine offenen Aufgaben.</p>
-    </div>
+    <h1>Kurze Pause!</h1>
+    
+    <p>
+        Wir führen aktuell Wartungsarbeiten durch, um Junior Rescue noch besser für dich zu machen. 
+        Bitte schau in ein paar Minuten nochmal vorbei.
+    </p>
 
-    <h3>Lern-Themen</h3>
-    <div id="topics-area" class="grid">
-        </div>
+    <div class="footer-note">
+        Vielen Dank für deine Geduld!<br>
+        &copy; 2026 Junior Rescue Learning
+    </div>
 </div>
 
-<script src="app.js"></script>
-<script>
-    auth.onAuthStateChanged(async (user) => {
-        if (!user) return;
-        const snap = await db.collection("Users").doc(user.uid).get();
-        const u = snap.data();
-
-        // UI füllen
-        document.getElementById('user-greeting').innerText = `Hallo, ${u.vorname}!`;
-        document.getElementById('lvl').innerText = u.level || 1;
-        document.getElementById('xp').innerText = u.xp || 0;
-        
-        // XP Bar berechnen (Beispiel: 500 XP pro Level)
-        const progress = ((u.xp % 500) / 500) * 100;
-        document.getElementById('xp-bar').style.width = progress + "%";
-
-        // Admin Link anzeigen
-        if(u.role !== "Jugendlicher") {
-            const al = document.getElementById('admin-link');
-            al.classList.remove('hidden');
-            al.href = "verwaltung.html";
-        }
-        
-        loadDashboardData(u.orgID, user.uid);
-    });
-
-    async function loadDashboardData(orgID, uid) {
-        // Hausaufgaben
-        const hwSnap = await db.collection("Homework").where("userID", "==", uid).where("status", "==", "offen").get();
-        const hwArea = document.getElementById('hw-area');
-        if(!hwSnap.empty) hwArea.innerHTML = "";
-        hwSnap.forEach(doc => {
-            const h = doc.data();
-            hwArea.innerHTML += `
-                <div class="card" style="border-top: 4px solid #f59e0b;">
-                    <div class="badge" style="background: #fef3c7; color: #92400e;">Hausaufgabe</div>
-                    <h4 style="margin: 10px 0;">${h.topicTitle}</h4>
-                    <button class="btn-dark" onclick="location.href='lernen.html?id=${h.topicID}'">Jetzt bearbeiten</button>
-                </div>`;
-        });
-
-        // Themen (Global + Eigene Orga)
-        const tSnap = await db.collection("Topics").where("orgID", "in", ["global", orgID]).get();
-        const tArea = document.getElementById('topics-area');
-        tArea.innerHTML = "";
-        tSnap.forEach(doc => {
-            const t = doc.data();
-            tArea.innerHTML += `
-                <div class="card">
-                    <h4 style="margin-bottom: 5px;">${t.title}</h4>
-                    <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 20px;">${t.content.substring(0, 60)}...</p>
-                    <button class="btn-outline" onclick="location.href='lernen.html?id=${doc.id}'">Öffnen</button>
-                </div>`;
-        });
-    }
-</script>
 </body>
 </html>
